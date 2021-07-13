@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.HashMap;
 
 public interface FileService {
-    String[] getAllServingFiles();
+    String[] getAllFiles();
 
     HashMap<String, String> getFile(String fileName);
 

@@ -1,9 +1,12 @@
 package client;
 
-import client.enums.MessageCodesEnum;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.origin.SystemEnvironmentOrigin;
+import client.enums.MessageCodesEnum;
 
 import javax.servlet.ServletContext;
 import java.io.IOException;
@@ -11,18 +14,23 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@Slf4j
 public class Node implements Runnable {
     private String myIP;
     private int myPort;
     private String myUsername;
-    public ArrayList<Node> myNeighbours = new ArrayList<>();
-    public HashMap<String, Node> myActiveNeighbours = new HashMap<>();
-    public ArrayList<String> myBlacklist = new ArrayList<>();
+    private ArrayList<Node> myNeighbours = new ArrayList<>();
+    private HashMap<String, Node> myActiveNeighbours = new HashMap<>();
+    private ArrayList<String> myBlacklist = new ArrayList<>();
     private ArrayList<String> myResources = new ArrayList<>();
     DatagramSocket ds;
-    public int routingTableStatus = 0;
-    public int gossipSendingStatus = 0;
-    public DatagramSocket socket = null;
+    private int routingTableStatus = 0;
+    private int gossipSendingStatus = 0;
+    private DatagramSocket socket = null;
 
     private static final int BOOTSTRAP_SERVER_PORT = 55555;
     private static final String BOOTSTRAP_SERVER_IP = "192.168.43.157";
@@ -39,14 +47,6 @@ public class Node implements Runnable {
     public Node(String myIP, int myPort) {
         this.myIP = myIP;
         this.myPort = myPort;
-    }
-
-    public String getMyIP() {
-        return myIP;
-    }
-
-    public int getMyPort() {
-        return myPort;
     }
 
     public String getIpPort() {
@@ -74,14 +74,6 @@ public class Node implements Runnable {
     }
 
     @Override
-    public String toString() {
-        return "Node {" +
-                "myIP ='" + myIP + '\'' +
-                ", myPort =" + myPort +
-                '}';
-    }
-
-    @Override
     public void run() {
         System.out.println("I am running");
 
@@ -89,7 +81,7 @@ public class Node implements Runnable {
         try {
             socket = new DatagramSocket(this.myPort);
         } catch (BindException ex){
-            System.out.println("Already in use. Please re-register and try again !");
+            log.info("Already in use. Please re-register and try again !");
         }catch (SocketException e) {
             e.printStackTrace();
         }

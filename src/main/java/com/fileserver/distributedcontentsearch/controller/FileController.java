@@ -7,7 +7,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.HashMap;
 
 @RestController
@@ -21,7 +20,7 @@ public class FileController {
     @GetMapping("/all")
     public String[] getAll() {
         log.info("Getting all the files");
-        return fileService.getAllServingFiles();
+        return fileService.getAllFiles();
     }
 
     @GetMapping("/file/{fileName}")
