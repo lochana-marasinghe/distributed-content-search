@@ -13,11 +13,10 @@ import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.StringTokenizer;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
-@ToString
 @Slf4j
 public class Node implements Runnable {
     private String myIP;
@@ -74,15 +73,57 @@ public class Node implements Runnable {
     }
 
     @Override
+    public String toString() {
+        return "Node{" +
+                "My IP = '" + myIP + '\'' +
+                ", My Port = " + myPort +
+                '}';
+    }
+
+
+    @Override
     public void run() {
         System.out.println("I am running");
 
-        DatagramSocket socket = null;
+        DatagramSocket socket;
         try {
             socket = new DatagramSocket(this.myPort);
-        } catch (BindException ex){
+            while (true) {
+                byte[] buffer = new byte[65536];
+                DatagramPacket messageRequest = new DatagramPacket(buffer, buffer.length);
+
+                try {
+                    socket.receive(messageRequest);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                byte[] receivedData = messageRequest.getData();
+                String receivedMessage = new String(receivedData, 0, receivedData.length);
+                StringTokenizer st = new StringTokenizer(receivedMessage, " ");
+
+                switch (st.nextToken()) {
+                    case "JOIN":
+                        Node sender = new Node(receivedMessage.split(" ")[2],
+                                Integer.parseInt(receivedMessage.split(" ")[3]));
+
+                        log.info("[JOIN] request from " + sender);
+
+                        if (!isNeighbour(sender.getMyIP(), sender.getMyPort())) {
+                            addToMyRoutingTable(sender);
+                            log.info(" Added " + sender + " to the routing table");
+                        } else {
+                            log.warn(sender + " already in routing table");
+                        }
+                        break;
+                    default:
+                        log.warn("Invalid message type");
+                        break;
+                }
+            }
+        } catch (BindException ex) {
             log.info("Already in use. Please re-register and try again !");
-        }catch (SocketException e) {
+        } catch (SocketException e) {
             e.printStackTrace();
         }
     }
