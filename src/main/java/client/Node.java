@@ -1,11 +1,9 @@
 package client;
 
-import lombok.AllArgsConstructor;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import client.enums.MessageCodesEnum;
 
 import javax.servlet.ServletContext;
@@ -34,8 +32,6 @@ public class Node implements Runnable {
     private static final int BOOTSTRAP_SERVER_PORT = 55555;
     private static final String BOOTSTRAP_SERVER_IP = "192.168.43.157";
 
-    @Autowired
-    ServletContext context;
 
     public Node(String myIP, int myPort, String myUsername) {
         this.myIP = myIP;

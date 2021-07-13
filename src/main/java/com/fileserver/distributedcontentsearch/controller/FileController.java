@@ -7,15 +7,18 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 
 @RestController
 @Slf4j
 @RequestMapping("/files")
 public class FileController {
 
+    private final FileService fileService;
+
     @Autowired
-    private static FileService fileService;
+    public FileController(FileService fileService) {
+        this.fileService = fileService;
+    }
 
     @GetMapping("/all")
     public String[] getAll() {

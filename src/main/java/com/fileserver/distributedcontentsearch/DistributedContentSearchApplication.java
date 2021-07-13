@@ -1,13 +1,10 @@
 package com.fileserver.distributedcontentsearch;
 
 import client.Node;
-import com.fileserver.distributedcontentsearch.service.FileService;
 import com.fileserver.distributedcontentsearch.service.impl.FileServiceImpl;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -19,21 +16,15 @@ public class DistributedContentSearchApplication {
     private static int port;
     public static String[] filesServed;
 
-    @Autowired
-	private static FileService fileService;
-
 	public static void main(String[] args)  {
+		SpringApplication.run(DistributedContentSearchApplication.class, args);
 
-        Scanner scanner = new Scanner(System.in);
-        SpringApplication.run(DistributedContentSearchApplication.class, args);
-
+		Scanner scanner = new Scanner(System.in);
         String ip = getMyIp();
 
 		System.out.println("=========== DISTRIBUTED CONTENT SEARCHING APPLICATION=============");
         System.out.println("\nPlease enter the port Number:");
 		port = scanner.nextInt();
-
-		SpringApplication.run(DistributedContentSearchApplication.class, args);
 
 		scanner.nextLine();
 
@@ -45,6 +36,7 @@ public class DistributedContentSearchApplication {
 		new Thread(newNode).start();
 
 //		set serving files for the node
+		FileServiceImpl fileService = new FileServiceImpl();
 		fileService.init();
 		filesServed = fileService.getServingFiles();
 
