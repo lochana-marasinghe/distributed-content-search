@@ -1,6 +1,6 @@
 package client.enums;
 
-public enum MessageCodes {
+public enum MessageCodesEnum {
     REG,
     REGOK,
     UNREG,
