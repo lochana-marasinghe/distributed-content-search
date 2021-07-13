@@ -1,6 +1,9 @@
 package com.fileserver.distributedcontentsearch;
 
 import client.Node;
+import com.fileserver.distributedcontentsearch.service.FileService;
+import com.fileserver.distributedcontentsearch.service.impl.FileServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -16,7 +19,10 @@ public class DistributedContentSearchApplication {
     private static int port;
     public static String[] filesServed;
 
-    public static void main(String[] args) throws IOException {
+    @Autowired
+	private static FileService fileService;
+
+	public static void main(String[] args)  {
 
         Scanner scanner = new Scanner(System.in);
         SpringApplication.run(DistributedContentSearchApplication.class, args);
@@ -38,15 +44,16 @@ public class DistributedContentSearchApplication {
 
 		new Thread(newNode).start();
 
-		for (int i =0; i < filesServed.length ; i ++ ) {
-			newNode.addResource(filesServed[i],"/" + filesServed[i] );
+//		set serving files for the node
+		fileService.init();
+		filesServed = fileService.getServingFiles();
+
+		for (String s : filesServed) {
+			newNode.addResource(s, "/" + s);
 		}
 
 		newNode.showMyResourcesList();
 		System.out.println("Registering " + newNode.getIpPort());
-
-
-
     }
 
 	public static String getMyIp() {

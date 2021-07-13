@@ -19,12 +19,12 @@ public class FileController {
 
     @GetMapping("/all")
     public String[] getAll() {
-        log.info("Getting all the files");
-        return fileService.getAllFiles();
+        log.info("Getting all the serving files");
+        return fileService.getServingFiles();
     }
 
     @GetMapping("/file/{fileName}")
-    public HashMap<String, String> getFile(@PathVariable String fileName){
+    public String getFile(@PathVariable String fileName){
         log.info("Get file -> {}", fileName);
         return   fileService.getFile(fileName);
     }

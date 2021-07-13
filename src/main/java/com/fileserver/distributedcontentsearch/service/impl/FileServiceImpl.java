@@ -1,25 +1,40 @@
 package com.fileserver.distributedcontentsearch.service.impl;
 
 import com.fileserver.distributedcontentsearch.service.FileService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import javax.print.attribute.HashAttributeSet;
+import java.io.*;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Random;
 
 @Service
+@Slf4j
 public class FileServiceImpl implements FileService {
-    Random randomNum = new Random();
+    Random random = new Random();
     String[] files = new String[20];
     String[] servingFiles;
 
-    public FileServiceImpl() throws IOException {
+    @Override
+    public void init() {
+        try {
         File file = ResourceUtils.getFile("classpath:static/fileNames.txt");
         BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
 
@@ -29,31 +44,104 @@ public class FileServiceImpl implements FileService {
             files[counter] = line;
             counter++;
         }
-        bufferedReader.close();
+            bufferedReader.close();
+        } catch (IOException e) {
+            log.error(e.getMessage());
+            e.printStackTrace();
+        }
         setServingFiles();
     }
 
     public void setServingFiles(){
-        int rand = 3 + randomNum.nextInt(6-3);
+        int rand = 3 + random.nextInt(6-3);
         servingFiles = new String[rand];
         for(int i=0; i<rand; i++) {
-            int index = randomNum.nextInt(20);
+            int index = random.nextInt(20);
             servingFiles[i] = files[index];
         }
     }
 
     @Override
-    public String[] getAllFiles() {
-        return new String[0];
-    }
-
-    @Override
-    public HashMap<String, String> getFile(String fileName) {
+    public String getFile(String fileName) {
+        for (String servingFile : servingFiles) {
+            if (servingFile.equals(fileName)) {
+                return servingFile;
+            }
+        }
         return null;
     }
 
     @Override
     public ResponseEntity<Resource> downloadContent(String fileName) {
-        return null;
+        boolean isIncluded = false;
+        for(String file: servingFiles){
+            if(file.equalsIgnoreCase(fileName)){
+                isIncluded = true;
+                break;
+            }
+        }
+
+        //check if file is serving
+        if (isIncluded) {
+            try {
+            // set file size and filling the file with characters
+            Random random = new Random();
+            int fileSize = (2 + random.nextInt(8)) * 1024 * 1024;
+            char[] chars = new char[fileSize];
+            Arrays.fill(chars, 'c');
+            String writeString = new String(chars);
+
+            //calculating hash
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(writeString.getBytes(StandardCharsets.UTF_8));
+            String encodeToString = Base64.getEncoder().encodeToString(hash);
+            log.info("File: {} \nFile Size: {}MB\nHash: {}", fileName, fileSize / (1024 * 1024), encodeToString );
+
+            //create random file
+            ClassLoader classLoader = getClass().getClassLoader();
+            URL classLoaderResource = classLoader.getResource(".");
+            if (classLoaderResource == null) {
+                log.error("Could not get resource from class loader");
+                return ResponseEntity.internalServerError().build();
+            }
+            String target = classLoaderResource.getFile()
+                    .split("target")[0].substring(1) + "src/main/resources/static/createdFiles/" + fileName + ".txt";
+            BufferedWriter writer = new BufferedWriter(new FileWriter(target));
+            writer.write(writeString);
+            writer.close();
+
+            HttpHeaders headers = new HttpHeaders();
+            String headerValue = "attachment; filename=" + fileName + ".txt";
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, headerValue);
+
+            File file = ResourceUtils.getFile(target);
+            Path path = Paths.get(file.getAbsolutePath());
+            ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
+
+            //send created file
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentLength(file.length())
+                    .contentType(MediaType.parseMediaType("application/octet-stream"))
+                    .body(resource);
+            } catch (NoSuchAlgorithmException | IOException e) {
+                e.printStackTrace();
+                log.error(e.getMessage());
+                return ResponseEntity.internalServerError().build();
+            }
+        } else{
+            log.warn("File does not exists!");
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    @Override
+    public String[] getServingFiles() {
+        return servingFiles;
+    }
+
+    @Override
+    public String[] getAll()  {
+        return files;
     }
 }
