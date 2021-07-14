@@ -7,10 +7,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import client.enums.MessageCodesEnum;
 
 import javax.servlet.ServletContext;
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 
 @Data
 @NoArgsConstructor
@@ -327,11 +331,68 @@ public class Node implements Runnable {
     }
 
     public void search(String searchFileName) {
+        String message = MessageCodesEnum.SER + " " + myIP + " " + myPort + " \"" + searchFileName + "\" 0";
+        message = MessageUtil.setMessageSend(message);
+        try {
+            for (Node myNeighbour : myNeighbours) {
+                    ds.send(MessageUtil.createDataPacketFormattedMsg(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void leave() {
     }
 
     public void download(String ip, String port, String fileName) {
+        log.info("Requesting {} file..." , fileName);
+        try {
+            //create request URL to download files
+            URL url = new URL("http://" +ip+":"+port+"/files/download/"+fileName);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+
+            //set connection timeouts
+            con.setConnectTimeout(15000);
+            con.setReadTimeout(15000);
+
+            // Retrieving the response and creating the content
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            String inputLine;
+            StringBuilder content = new StringBuilder();
+            while ((inputLine = bufferedReader.readLine()) != null) {
+                content.append(inputLine);
+            }
+            bufferedReader.close();
+
+            if(content.toString().length() > 0) {
+                String workingDirectory = System.getProperty("user.dir");
+                String target = workingDirectory + "\\src\\main\\resources\\static\\downloadedFiles\\" +
+                        fileName.replace("%20", " ") + ".txt";
+
+                FileOutputStream fileOutputStream = new FileOutputStream(target);
+                fileOutputStream.write(content.toString().getBytes());
+
+                Scanner scanner = new Scanner(new FileReader(target));
+                StringBuilder fileRead = new StringBuilder();
+                while (scanner.hasNext()) {
+                    fileRead.append(scanner.next());
+                }
+                scanner.close();
+                log.info("Successfully downloaded the file!");
+
+                //calculate the hash
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                byte[] hash = digest.digest(fileRead.toString().getBytes(StandardCharsets.UTF_8));
+                String encoded = Base64.getEncoder().encodeToString(hash);
+                log.info("Downloaded file hash:" + encoded);
+            } else {
+                log.warn("No file received! ");
+            }
+        } catch (IOException | NoSuchAlgorithmException e) {
+            log.error(e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

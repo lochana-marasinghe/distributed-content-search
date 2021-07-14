@@ -48,7 +48,6 @@ public class CommandHandler {
                             fileName.append(commandArray[i]).append("%20");
                         }
                     }
-                    System.out.println("Sending download request for " + fileName + " file..");
                     node.download(reqIp, reqPort, fileName.toString());
                 }
                 break;

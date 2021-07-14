@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 
 import java.io.*;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -51,42 +50,9 @@ public class FileServiceImpl implements FileService {
     public void setServingFiles(){
         int rand = 3 + random.nextInt(6-3);
         servingFiles = new String[rand];
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            for(int i=0; i<rand; i++) {
-                int index = random.nextInt(20);
-                servingFiles[i] = files[index];
-                Random random = new Random();
-                int fileSize = (2 + random.nextInt(8)) * 1024 * 1024;
-                char[] chars = new char[fileSize];
-                Arrays.fill(chars, 'c');
-                String writeString = new String(chars);
-
-                //calculating hash
-                byte[] hash = digest.digest(writeString.getBytes(StandardCharsets.UTF_8));
-                String encodeToString = Base64.getEncoder().encodeToString(hash);
-                log.info("File: {} \nFile Size: {}MB\nHash: {}", servingFiles[i], fileSize / (1024 * 1024), encodeToString );
-
-                //create file
-                ClassLoader classLoader = getClass().getClassLoader();
-                URL classLoaderResource = classLoader.getResource(".");
-                if (classLoaderResource == null) {
-                    log.error("Could not get resource from class loader");
-                }
-                String workingDirectory = System.getProperty("user.dir");
-                String target = workingDirectory + "\\src\\main\\resources\\static\\createdFiles\\" + servingFiles[i] + ".txt";
-                log.info(target);
-                try {
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(target));
-                    writer.write(writeString);
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        } catch (NoSuchAlgorithmException e) {
-            log.error(e.getMessage());
-            e.printStackTrace();
+        for(int i=0; i<rand; i++) {
+            int index = random.nextInt(20);
+            servingFiles[i] = files[index];
         }
     }
 
@@ -113,8 +79,25 @@ public class FileServiceImpl implements FileService {
         //check if file is serving
         if (isIncluded) {
             try {
+                Random random = new Random();
+                int fileSize = (2 + random.nextInt(8)) * 1024 * 1024;
+                char[] chars = new char[fileSize];
+                Arrays.fill(chars, 'c');
+                String writeString = new String(chars);
+
+                //calculating hash
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                byte[] hash = digest.digest(writeString.getBytes(StandardCharsets.UTF_8));
+                String encodeToString = Base64.getEncoder().encodeToString(hash);
+                log.info("File: {} \nFile Size: {}MB\nHash: {}", fileName, fileSize / (1024 * 1024), encodeToString );
+
+                //create file
                 String workingDirectory = System.getProperty("user.dir");
                 String target = workingDirectory + "\\src\\main\\resources\\static\\createdFiles\\" + fileName + ".txt";
+
+                BufferedWriter writer = new BufferedWriter(new FileWriter(target));
+                writer.write(writeString);
+                writer.close();
 
                 HttpHeaders headers = new HttpHeaders();
                 String headerValue = "attachment; filename=" + fileName + ".txt";
@@ -130,7 +113,7 @@ public class FileServiceImpl implements FileService {
                         .contentLength(file.length())
                         .contentType(MediaType.parseMediaType("application/octet-stream"))
                         .body(resource);
-                } catch (IOException e) {
+                } catch (IOException | NoSuchAlgorithmException e) {
                     e.printStackTrace();
                     log.error(e.getMessage());
                     return ResponseEntity.internalServerError().build();
