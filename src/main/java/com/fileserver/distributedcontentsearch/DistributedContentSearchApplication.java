@@ -1,5 +1,6 @@
 package com.fileserver.distributedcontentsearch;
 
+import client.CommandHandler;
 import client.Node;
 import com.fileserver.distributedcontentsearch.service.FileService;
 import com.fileserver.distributedcontentsearch.service.impl.FileServiceImpl;
@@ -22,7 +23,7 @@ public class DistributedContentSearchApplication {
     @Autowired
 	private static FileService fileService;
 
-	public static void main(String[] args)  {
+	public static void main(String[] args) throws IOException {
 
         Scanner scanner = new Scanner(System.in);
         SpringApplication.run(DistributedContentSearchApplication.class, args);
@@ -53,7 +54,10 @@ public class DistributedContentSearchApplication {
 		}
 
 		newNode.showMyResourcesList();
-		System.out.println("Registering " + newNode.getIpPort());
+		System.out.println("Registering " + newNode);
+		newNode.register();
+
+		CommandHandler commandHandler = new CommandHandler(newNode);
     }
 
 	public static String getMyIp() {

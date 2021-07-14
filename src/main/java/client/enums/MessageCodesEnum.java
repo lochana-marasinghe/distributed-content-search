@@ -10,5 +10,7 @@ public enum MessageCodesEnum {
     LEAVEOK,
     SER,
     SEROK,
-    ERROR
+    ERROR,
+    GOSSIP,
+    GOSSIPOK
 }
