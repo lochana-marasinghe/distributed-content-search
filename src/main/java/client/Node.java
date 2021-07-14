@@ -11,7 +11,6 @@ import javax.servlet.ServletContext;
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.StringTokenizer;
 
 @Data
@@ -22,7 +21,7 @@ public class Node implements Runnable {
     private int myPort;
     private String myUsername;
     private ArrayList<Node> myNeighbours = new ArrayList<>();
-    private HashMap<String, Node> myActiveNeighbours = new HashMap<>();
+    private ArrayList<Node> myActiveNeighbours = new ArrayList<>();
     private ArrayList<Node> myBlacklist = new ArrayList<>();
     private ArrayList<String> myResources = new ArrayList<>();
     DatagramSocket ds;
@@ -73,14 +72,25 @@ public class Node implements Runnable {
 
     public boolean isBlacklisted(Node receivedNode) {
         boolean isFound = false;
-        for (Node node : myBlacklist) {
-            if (node.compareMeWithAnotherNode(receivedNode)) {
+        for (Node blacklistNode : myBlacklist) {
+            if (blacklistNode.compareMeWithAnotherNode(receivedNode)) {
                 isFound = true;
                 break;
             }
         }
 
         return isFound;
+    }
+
+    public boolean isActiveNeighbour(Node receiveNode) {
+        boolean isActive = false;
+        for (Node activeNeighbour : myActiveNeighbours) {
+            if (activeNeighbour.compareMeWithAnotherNode(receiveNode)) {
+                isActive = true;
+                break;
+            }
+        }
+        return isActive;
     }
 
     @Override
@@ -115,7 +125,6 @@ public class Node implements Runnable {
                 Node sender = new Node(receivedMessage.split(" ")[2],
                         Integer.parseInt(receivedMessage.split(" ")[3]));
 
-
                 switch (st.nextToken()) {
                     case "JOIN":
                         log.info("[JOIN] request from " + sender);
@@ -128,6 +137,14 @@ public class Node implements Runnable {
                     case "GOSSIPOK":
                         log.info("[GOSSIPOK] from " + sender);
                         handleGossipOK(st);
+                    case "ISACTIVE":
+                        log.info("[ISACTIVE] from " + sender);
+                        handleHeartBeat(sender);
+                        break;
+                    case "ACTIVE":
+                        log.info("[ACTIVE] from " + sender);
+                        addActiveNeighbours(sender);
+                        break;
                     default:
                         log.warn("Invalid message type");
                         break;
@@ -157,7 +174,6 @@ public class Node implements Runnable {
 //
 //        DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
 //                InetAddress.getByName(BOOTSTRAP_SERVER_IP), BOOTSTRAP_SERVER_PORT);
-
             ds.send(MessageUtil.createDataPacket(message, BOOTSTRAP_SERVER_IP, BOOTSTRAP_SERVER_PORT));
 
             addInitialNeighbours();
@@ -189,7 +205,6 @@ public class Node implements Runnable {
         String responseMessage = new String(byteBuffer, 0, registerResponse.getLength());
         String[] splitResponse = responseMessage.split(" ");
 
-
         if (splitResponse[1].equals(MessageCodesEnum.REGOK.name())) {
             int responseCode = Integer.parseInt(splitResponse[2]);
 
@@ -214,7 +229,6 @@ public class Node implements Runnable {
                     if (isNeighbour(neighbourIp, neighbourPort)) // Will have to remove this check redundant
                         addToMyRoutingTable(new Node(neighbourIp, neighbourPort));
                 }
-
             }
         }
     }
@@ -281,6 +295,24 @@ public class Node implements Runnable {
             }
         } else {
             log.warn(this + " already has 2 neighbours");
+        }
+    }
+
+    public void handleHeartBeat(Node sender) {
+        String message = MessageCodesEnum.ACTIVE + " " + this.myIP + " " + this.myPort;
+        try {
+            ds.send(MessageUtil.createDataPacket(message, sender.getMyIP(), sender.getMyPort()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void addActiveNeighbours(Node sender) {
+        if (!isActiveNeighbour(sender)) {
+            this.myActiveNeighbours.add(sender);
+            log.info("Added " + sender + "to Active Neighbour List");
+        } else {
+            log.warn(sender + " already in Active Neighbour List");
         }
     }
 }

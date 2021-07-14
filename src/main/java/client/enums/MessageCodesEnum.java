@@ -12,5 +12,7 @@ public enum MessageCodesEnum {
     SEROK,
     ERROR,
     GOSSIP,
-    GOSSIPOK
+    GOSSIPOK,
+    ISACTIVE,
+    ACTIVE
 }
