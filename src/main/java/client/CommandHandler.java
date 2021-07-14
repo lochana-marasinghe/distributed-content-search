@@ -1,22 +1,55 @@
 package client;
 
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-
 public class CommandHandler {
-    private Node node ;
+    private final Node node ;
 
     public CommandHandler(Node node) {
         this.node = node;
     }
 
-    public void execute(String command) throws IOException, NoSuchAlgorithmException {
+    public void execute(String command) {
         switch (command.split(" ")[0]) {
+            case "routing":
+                node.showRoutingTable();
+                break;
+            case "unregister":
+                node.unregister();
+                break;
+            case "register":
+                node.register();
+                break;
             case "join":
-                try {
-                    node.join();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                node.join();
+                break;
+            case "search": {
+                    String[] commandArray = command.split(" ");
+                    StringBuilder fileName = new StringBuilder();
+                    for (int i = 1; i < commandArray.length; i++)
+                        fileName.append(" ").append(commandArray[i]);
+                    System.out.println("Searching file: " + fileName.toString().trim());
+                    node.search(fileName.toString().trim());
+                }
+                break;
+            case "files":
+                node.showMyResourcesList();
+                break;
+            case "leave":
+                node.leave();
+                break;
+            case "download": {
+                    String[] commandArray = command.split(" ");
+                    String reqIp = commandArray[1];
+                    String reqPort = commandArray[2];
+                    StringBuilder fileName = new StringBuilder();
+                    for (int i = 3; i < commandArray.length; i++) {
+                        if (i == commandArray.length - 1) {
+                            fileName.append(commandArray[i]);
+                        } else {
+                            fileName.append(commandArray[i]).append("%20");
+                        }
+                    }
+                    System.out.println("Sending download request for " + fileName + " file..");
+                    node.download(reqIp, reqPort, fileName.toString());
                 }
                 break;
             default:

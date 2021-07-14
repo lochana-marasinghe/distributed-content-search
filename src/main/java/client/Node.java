@@ -1,6 +1,5 @@
 package client;
 
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -168,7 +167,8 @@ public class Node implements Runnable {
         }
     }
 
-    public void join() throws IOException {
+    public void join()  {
+        try {
         String message = MessageCodesEnum.JOIN + " " + myIP + " " + myPort;
 //        String messageLen = String.valueOf(message.length() + 5).replace(' ', '0');
 
@@ -179,6 +179,9 @@ public class Node implements Runnable {
 //                    InetAddress.getByName(myNeighbour.getMyIP()), myNeighbour.getMyPort());
 //            ds.send(packet);
             ds.send(MessageUtil.createDataPacket(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
+        }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -282,5 +285,20 @@ public class Node implements Runnable {
         } else {
             log.warn(this + " already has 2 neighbours");
         }
+    }
+
+    public void showRoutingTable() {
+    }
+
+    public void unregister() {
+    }
+
+    public void search(String searchFileName) {
+    }
+
+    public void leave() {
+    }
+
+    public void download(String ip, String port, String fileName) {
     }
 }
