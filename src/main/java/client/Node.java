@@ -4,6 +4,7 @@ package client;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import client.enums.MessageCodesEnum;
 
 import javax.servlet.ServletContext;
@@ -22,7 +23,7 @@ public class Node implements Runnable {
     private String myUsername;
     private ArrayList<Node> myNeighbours = new ArrayList<>();
     private HashMap<String, Node> myActiveNeighbours = new HashMap<>();
-    private ArrayList<String> myBlacklist = new ArrayList<>();
+    private ArrayList<Node> myBlacklist = new ArrayList<>();
     private ArrayList<String> myResources = new ArrayList<>();
     DatagramSocket ds;
     private int routingTableStatus = 0;
@@ -32,6 +33,8 @@ public class Node implements Runnable {
     private static final int BOOTSTRAP_SERVER_PORT = 55555;
     private static final String BOOTSTRAP_SERVER_IP = "192.168.43.157";
 
+    @Autowired
+    ServletContext context;
 
     public Node(String myIP, int myPort, String myUsername) {
         this.myIP = myIP;
@@ -52,14 +55,26 @@ public class Node implements Runnable {
         this.myResources.add(name);
     }
 
-    public boolean compareWithAnotherNode(String ip, int port) {
-        return myIP.equals(ip) && port == myPort;
+    public boolean compareMeWithAnotherNode(Node otherNode) {
+        return myIP.equals(otherNode.getMyIP()) && otherNode.getMyPort() == myPort;
     }
 
     public boolean isNeighbour(String ip, int port) {
         boolean isFound = false;
-        for (Node node : myNeighbours) {
-            if (node.getMyIP().equals(ip) && node.getMyPort() == port) {
+        for (Node neighbour : myNeighbours) {
+            if (neighbour.compareMeWithAnotherNode(new Node(ip, port))) {
+                isFound = true;
+                break;
+            }
+        }
+
+        return isFound;
+    }
+
+    public boolean isBlacklisted(Node receivedNode) {
+        boolean isFound = false;
+        for (Node node : myBlacklist) {
+            if (node.compareMeWithAnotherNode(receivedNode)) {
                 isFound = true;
                 break;
             }
@@ -97,21 +112,22 @@ public class Node implements Runnable {
                 byte[] receivedData = messageRequest.getData();
                 String receivedMessage = new String(receivedData, 0, receivedData.length);
                 StringTokenizer st = new StringTokenizer(receivedMessage, " ");
+                Node sender = new Node(receivedMessage.split(" ")[2],
+                        Integer.parseInt(receivedMessage.split(" ")[3]));
+
 
                 switch (st.nextToken()) {
                     case "JOIN":
-                        Node sender = new Node(receivedMessage.split(" ")[2],
-                                Integer.parseInt(receivedMessage.split(" ")[3]));
-
                         log.info("[JOIN] request from " + sender);
-
-                        if (!isNeighbour(sender.getMyIP(), sender.getMyPort())) {
-                            addToMyRoutingTable(sender);
-                            log.info(" Added " + sender + " to the routing table");
-                        } else {
-                            log.warn(sender + " already in routing table");
-                        }
+                        addToMyRoutingTable(sender);
                         break;
+                    case "GOSSIP":
+                        log.info("[GOSSIP] from " + sender);
+                        sendMyNeighbours(sender);
+                        break;
+                    case "GOSSIPOK":
+                        log.info("[GOSSIPOK] from " + sender);
+                        handleGossipOK(st);
                     default:
                         log.warn("Invalid message type");
                         break;
@@ -135,29 +151,29 @@ public class Node implements Runnable {
     public void register() throws IOException {
         ds = new DatagramSocket();
         String message = MessageCodesEnum.REG + " " + myIP + " " + myPort + " " + myUsername;
-        String messageLen = String.format("%4s", String.valueOf(message.length() + 5).replace(' ', '0'));
-        message = messageLen + " " + message;
+//        String messageLen = String.format("%4s", String.valueOf(message.length() + 5).replace(' ', '0'));
+//        message = messageLen + " " + message;
+//
+//        DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
+//                InetAddress.getByName(BOOTSTRAP_SERVER_IP), BOOTSTRAP_SERVER_PORT);
 
-        DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
-                InetAddress.getByName(BOOTSTRAP_SERVER_IP), BOOTSTRAP_SERVER_PORT);
-        ds.send(packet);
+        ds.send(MessageUtil.createDataPacket(message, BOOTSTRAP_SERVER_IP, BOOTSTRAP_SERVER_PORT));
 
         addInitialNeighbours();
         printMyRoutingTable();
-
-
     }
 
     public void join() throws IOException {
         String message = MessageCodesEnum.JOIN + " " + myIP + " " + myPort;
-        String messageLen = String.valueOf(message.length() + 5).replace(' ', '0');
+//        String messageLen = String.valueOf(message.length() + 5).replace(' ', '0');
 
-        message = message + " " + messageLen;
+//        message = message + " " + messageLen;
 
         for (Node myNeighbour : myNeighbours) {
-            DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
-                    InetAddress.getByName(myNeighbour.getMyIP()), myNeighbour.getMyPort());
-            ds.send(packet);
+//            DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
+//                    InetAddress.getByName(myNeighbour.getMyIP()), myNeighbour.getMyPort());
+//            ds.send(packet);
+            ds.send(MessageUtil.createDataPacket(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
         }
     }
 
@@ -190,7 +206,7 @@ public class Node implements Runnable {
                     String neighbourIp = splitResponse[i];
                     int neighbourPort = Integer.parseInt(splitResponse[i + 1]);
 
-                    if (!isNeighbour(neighbourIp, neighbourPort))
+                    if (isNeighbour(neighbourIp, neighbourPort)) // Will have to remove this check redundant
                         addToMyRoutingTable(new Node(neighbourIp, neighbourPort));
                 }
 
@@ -199,9 +215,11 @@ public class Node implements Runnable {
     }
 
     public void addToMyRoutingTable(Node node) {
-        for (Node myNeighbour : this.myNeighbours) {
-            if (myNeighbour.compareWithAnotherNode(node.getMyIP(), node.getMyPort())) return;
-            else this.myNeighbours.add(node);
+        if (isNeighbour(node.getMyIP(), node.getMyPort())) {
+            log.warn(node + " is already a neighbour of " + this);
+        } else {
+            this.myNeighbours.add(node);
+            log.info(node + " was added to the routing table of " + this);
         }
     }
 
@@ -209,6 +227,55 @@ public class Node implements Runnable {
         System.out.println("============My Neighbours===========");
         for (Node myNeighbour : myNeighbours) {
             System.out.println(myNeighbour.toString());
+        }
+    }
+
+    public void sendMyNeighbours(Node sender) {
+        addToMyRoutingTable(sender);
+
+        if (this.myNeighbours.size() > 1) {
+            StringBuilder nodesToSend = new StringBuilder();
+            int noOfNodesToSend = 0;
+            for (Node neighbour : this.myNeighbours) {
+                if (neighbour.compareMeWithAnotherNode(sender)) {
+                    nodesToSend.append(neighbour.getMyIP()).append(" ").append(neighbour.myPort).append(" ");
+                    noOfNodesToSend++;
+                }
+            }
+            String message = MessageCodesEnum.GOSSIPOK + " " + sender.getMyIP() + " " + sender.getMyPort() + " " + noOfNodesToSend + " "
+                    + nodesToSend.delete(nodesToSend.length() - 1, nodesToSend.length());
+            log.info("Sending neighbours to " + sender);
+            try {
+                ds.send(MessageUtil.createDataPacket(message, sender.getMyIP(), sender.getMyPort()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            log.warn(this + " has only one neighbour. No additional neighbours to send " + sender);
+        }
+    }
+
+    public void handleGossipOK(StringTokenizer st) {
+        if (this.myNeighbours.size() < 3) {
+
+            Node sender = new Node(st.nextToken(), Integer.parseInt(st.nextToken()));
+            int noOfReceivedNodes = Integer.parseInt(st.nextToken());
+
+            log.info("[GOSSIP] Trying to add " + sender);
+            addToMyRoutingTable(sender);
+
+            for (int i = 0; i < noOfReceivedNodes; i++) {
+                Node receivedNode = new Node(st.nextToken(), Integer.parseInt(st.nextToken()));
+
+                if (isBlacklisted(receivedNode)) {
+                    log.info("[GOSSIP] Trying to add " + receivedNode);
+                    addToMyRoutingTable(receivedNode);
+                } else {
+                    log.warn(receivedNode + " is blacklisted");
+                }
+            }
+        } else {
+            log.warn(this + " already has 2 neighbours");
         }
     }
 }

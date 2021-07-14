@@ -1,5 +1,6 @@
 package com.fileserver.distributedcontentsearch;
 
+import client.CommandHandler;
 import client.Node;
 import com.fileserver.distributedcontentsearch.service.impl.FileServiceImpl;
 import org.springframework.boot.SpringApplication;
@@ -45,7 +46,10 @@ public class DistributedContentSearchApplication {
 		}
 
 		newNode.showMyResourcesList();
-		System.out.println("Registering " + newNode.getIpPort());
+		System.out.println("Registering " + newNode);
+		newNode.register();
+
+		CommandHandler commandHandler = new CommandHandler(newNode);
     }
 
 	public static String getMyIp() {
