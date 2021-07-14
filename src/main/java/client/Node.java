@@ -148,19 +148,24 @@ public class Node implements Runnable {
         }
     }
 
-    public void register() throws IOException {
-        ds = new DatagramSocket();
-        String message = MessageCodesEnum.REG + " " + myIP + " " + myPort + " " + myUsername;
+    public void register() {
+        try {
+            ds = new DatagramSocket();
+            String message = MessageCodesEnum.REG + " " + myIP + " " + myPort + " " + myUsername;
 //        String messageLen = String.format("%4s", String.valueOf(message.length() + 5).replace(' ', '0'));
 //        message = messageLen + " " + message;
 //
 //        DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
 //                InetAddress.getByName(BOOTSTRAP_SERVER_IP), BOOTSTRAP_SERVER_PORT);
 
-        ds.send(MessageUtil.createDataPacket(message, BOOTSTRAP_SERVER_IP, BOOTSTRAP_SERVER_PORT));
+            ds.send(MessageUtil.createDataPacket(message, BOOTSTRAP_SERVER_IP, BOOTSTRAP_SERVER_PORT));
 
-        addInitialNeighbours();
-        printMyRoutingTable();
+            addInitialNeighbours();
+            printMyRoutingTable();
+        } catch (IOException e) {
+            log.error(e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public void join() throws IOException {
