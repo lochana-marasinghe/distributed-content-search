@@ -10,7 +10,7 @@ public class CommandHandler {
     public void execute(String command) {
         switch (command.split(" ")[0]) {
             case "routing":
-                node.showRoutingTable();
+                node.printMyRoutingTable();
                 break;
             case "unregister":
                 node.unregister();
