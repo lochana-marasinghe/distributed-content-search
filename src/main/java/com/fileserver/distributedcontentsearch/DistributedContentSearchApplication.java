@@ -1,7 +1,6 @@
 package com.fileserver.distributedcontentsearch;
 
-import client.CommandHandler;
-import client.Node;
+import client.*;
 import com.fileserver.distributedcontentsearch.service.impl.FileServiceImpl;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -50,6 +49,24 @@ public class DistributedContentSearchApplication {
 		newNode.register();
 
 		CommandHandler commandHandler = new CommandHandler(newNode);
+
+		//Gossip handling thread
+		GossipHandler gossip = new GossipHandler(newNode);
+		gossip.run();
+
+		//Heart beat thread
+		HeartBeat heartBeat = new HeartBeat(newNode);
+		heartBeat.run();
+
+		//Neighbour Maintainer thread
+		NeighbourMaintainer neighbourMaintainer = new NeighbourMaintainer(newNode);
+		neighbourMaintainer.run();
+
+		//start listening to commands
+		while (true){
+			String command = scanner.nextLine();
+			commandHandler.execute(command);
+		}
     }
 
 	public static String getMyIp() {
