@@ -104,10 +104,9 @@ public class Node implements Runnable {
                 '}';
     }
 
-
     @Override
     public void run() {
-        System.out.println("I am running");
+        System.out.println(this+ " started to listen to messages");
 
         DatagramSocket socket;
         try {
@@ -324,9 +323,6 @@ public class Node implements Runnable {
         }
     }
 
-    public void showRoutingTable() {
-    }
-
     public void unregister() {
     }
 
@@ -395,4 +391,19 @@ public class Node implements Runnable {
             e.printStackTrace();
         }
     }
+
+    public void addBlacklistNode(Node node) {
+        if (isBlacklisted(node)) {
+            log.warn(node + " Already in the blacklist");
+        } else {
+            this.myBlacklist.add(node);
+            log.info(node + " Added to blacklist");
+        }
+    }
+
+
+
 }
+
+
+
