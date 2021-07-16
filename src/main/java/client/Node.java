@@ -1,16 +1,14 @@
 package client;
 
+import client.enums.MessageCodesEnum;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import client.enums.MessageCodesEnum;
 
 import javax.servlet.ServletContext;
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.StringTokenizer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -125,7 +123,7 @@ public class Node implements Runnable {
                 String receivedMessage = new String(receivedData, 0, receivedData.length).trim();
                 StringTokenizer st = new StringTokenizer(receivedMessage, " ");
 
-                String encodeLength= st.nextToken();
+                String encodeLength = st.nextToken();
 
                 Node sender;
                 MessageCodesEnum messageCode = MessageCodesEnum.valueOf(st.nextToken());
@@ -164,6 +162,14 @@ public class Node implements Runnable {
                         log.info("[SEROK] from " + sender);
                         handleSearchOk(sender, receivedMessage);
                         break;
+                    case LEAVE:
+                        handleLeave(receivedMessage);
+                    case LEAVEOK:
+                        if (receivedMessage.split(" ")[2].equals("0"))
+                            System.out.println(myIP + ":" + myPort + " Leave successfully");
+                        else
+                            System.out.println("Leave failed!");
+                        break;
                     default:
                         log.warn("Invalid message type");
                         break;
@@ -173,6 +179,40 @@ public class Node implements Runnable {
             log.info("Already in use. Please re-register and try again !");
         } catch (SocketException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void handleLeave(String receivedMessage) {
+        String ip = receivedMessage.split(" ")[2];
+        int port = Integer.parseInt(receivedMessage.split(" ")[3]);
+        int removingIndex = -1;
+        //search if current node has the neighbour
+        for (int i = 0; i < myNeighbours.size(); i++) {
+            if (myNeighbours.get(i).getMyIP().equals(ip) && myNeighbours.get(i).getMyPort() == port) {
+                removingIndex = i;
+            }
+        }
+        //if have, remove from routing table
+        if (removingIndex >= 0) {
+            myNeighbours.remove(removingIndex);
+            System.out.println("Removed node " + ip + ":" + port);
+            String request = "LEAVEOK 0";
+            String length = String.valueOf(request.length() + 5);
+            length = String.format("%4s", length).replace(' ', '0');
+            request = length + " " + request;
+            byte[] msg = request.getBytes();
+
+            InetAddress receiverIP = null;
+            try {
+                receiverIP = InetAddress.getByName(ip);
+
+                DatagramPacket packet = new DatagramPacket(msg, msg.length, receiverIP, port);
+                ds.send(packet);        //send response
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("There is no any node in  " + ip + ":" + port + " to remove");
         }
     }
 
@@ -188,7 +228,7 @@ public class Node implements Runnable {
 
         if (fileCount > 0 && cleanedMessage.size() > 1) {
             System.out.println("Founded File Names:");
-            for(int i= 1; i < cleanedMessage.size(); i++){
+            for (int i = 1; i < cleanedMessage.size(); i++) {
                 System.out.print(cleanedMessage.get(i) + " ");
             }
             System.out.println("\n----------------------------------------------------");
@@ -197,8 +237,8 @@ public class Node implements Runnable {
 
     private ArrayList<String> removeSpaces(String[] splitReceivedMsg) {
         ArrayList<String> fileLst = new ArrayList<>();
-        for(String i: splitReceivedMsg){
-            if(!i.trim().equals(""))
+        for (String i : splitReceivedMsg) {
+            if (!i.trim().equals(""))
                 fileLst.add(i.trim());
         }
 
@@ -214,8 +254,8 @@ public class Node implements Runnable {
         Set<String> myFoundFiles = new HashSet<>();
 
         //search through all of my resources
-        System.out.println("Searching the file: " +  fileName + " in my resources..");
-        for (String myFileName : myResources){
+        System.out.println("Searching the file: " + fileName + " in my resources..");
+        for (String myFileName : myResources) {
             for (String word : fileName.split(" ")) {
    /*              check for each word of the given file name within my file name
                 If contains, add to the myFoundFiles and jump to searching within the next my file*/
@@ -227,27 +267,27 @@ public class Node implements Runnable {
         }
 
 //        If no files found
-        if(myFoundFiles.isEmpty()) {
+        if (myFoundFiles.isEmpty()) {
             //If hop limit of flooding not exceeded, ask neighbours to search
-            if(newHops <= 4) {
-                System.out.println("I do not have the file. Asking neighbours to find the file: " +  fileName);
+            if (newHops <= 4) {
+                System.out.println("I do not have the file. Asking neighbours to find the file: " + fileName);
                 this.askNeighboursToSearch(fileName, searcher, String.valueOf(newHops));
             } else { // If hop count limit exceeded, send no files found to the searcher
-                System.out.println("I do not have the file: " +  fileName + ". Hop count limit exceeded");
+                System.out.println("I do not have the file: " + fileName + ". Hop count limit exceeded");
                 sendSearchResultToSearcher(myFoundFiles, searcher, String.valueOf(newHops));
             }
         } else { // If files found
-            System.out.println("I have search results matching with requested file: " +  fileName);
+            System.out.println("I have search results matching with requested file: " + fileName);
             sendSearchResultToSearcher(myFoundFiles, searcher, String.valueOf(newHops));
         }
     }
 
     private void askNeighboursToSearch(String searchFileName, Node searcher, String hops) {
-        String message = MessageCodesEnum.SER + " " + searcher.getMyIP() + " " + searcher.getMyPort() +" \""+searchFileName+"\" "+hops;
+        String message = MessageCodesEnum.SER + " " + searcher.getMyIP() + " " + searcher.getMyPort() + " \"" + searchFileName + "\" " + hops;
         message = MessageUtil.setMessageSend(message);
         try {
             for (Node myNeighbour : myNeighbours) {
-                if(!myNeighbour.compareMeWithAnotherNode(searcher)) {
+                if (!myNeighbour.compareMeWithAnotherNode(searcher)) {
                     System.out.println("[SER] request for file: " + searchFileName + " to " + myNeighbour);
                     ds.send(MessageUtil.createDataPacketFormattedMsg(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
                 }
@@ -262,14 +302,14 @@ public class Node implements Runnable {
     private void sendSearchResultToSearcher(Set<String> myFoundFiles, Node searcher, String hops) {
         String allFilesString = "";
         if (!myFoundFiles.isEmpty()) {
-            StringBuilder files= new StringBuilder();
-            for (String result: myFoundFiles){
+            StringBuilder files = new StringBuilder();
+            for (String result : myFoundFiles) {
                 files.append("\"").append(result).append("\" ");
             }
             allFilesString = files.toString();
         }
 
-        String message = MessageCodesEnum.SEROK + " " + myFoundFiles.size()+ " " + myIP +" "+ myPort + " " + hops +" " +
+        String message = MessageCodesEnum.SEROK + " " + myFoundFiles.size() + " " + myIP + " " + myPort + " " + hops + " " +
                 allFilesString;
         try {
             System.out.println("[SEROK] to " + searcher + ". " + myFoundFiles.size() + " files found.");
@@ -322,9 +362,9 @@ public class Node implements Runnable {
             String responseMsg = new String(buffer, 0, response.getLength());
             String[] responseMsgArr = responseMsg.split(" ");
 
-            if(MessageCodesEnum.valueOf(responseMsgArr[1]).equals(MessageCodesEnum.UNROK)){
+            if (MessageCodesEnum.valueOf(responseMsgArr[1]).equals(MessageCodesEnum.UNROK)) {
                 if (responseMsgArr[2].equals("0"))
-                    log.info(myIP+":"+myPort+" unregister successfully");
+                    log.info(myIP + ":" + myPort + " unregister successfully");
                 else
                     log.info("Unregistered successfully!");
             }
@@ -334,19 +374,19 @@ public class Node implements Runnable {
         }
     }
 
-    public void join()  {
+    public void join() {
         try {
-        String message = MessageCodesEnum.JOIN + " " + myIP + " " + myPort;
+            String message = MessageCodesEnum.JOIN + " " + myIP + " " + myPort;
 //        String messageLen = String.valueOf(message.length() + 5).replace(' ', '0');
 
 //        message = message + " " + messageLen;
 
-        for (Node myNeighbour : myNeighbours) {
+            for (Node myNeighbour : myNeighbours) {
 //            DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
 //                    InetAddress.getByName(myNeighbour.getMyIP()), myNeighbour.getMyPort());
 //            ds.send(packet);
-            ds.send(MessageUtil.createDataPacket(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
-        }
+                ds.send(MessageUtil.createDataPacket(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -383,8 +423,8 @@ public class Node implements Runnable {
                     if (!isNeighbour(neighbourIp, neighbourPort)) // Will have to remove this check redundant
                         addToMyRoutingTable(new Node(neighbourIp, neighbourPort), false);
                 }
-                for(Node i:myNeighbours)
-                    System.out.println(myPort+": Neighbours"+i.toString());
+                for (Node i : myNeighbours)
+                    System.out.println(myPort + ": Neighbours" + i.toString());
             }
         }
     }
@@ -396,7 +436,7 @@ public class Node implements Runnable {
         } else {
             this.myNeighbours.add(node);
             if (fromGossip) {
-                System.out.println("Node IP " + node.getMyIP() + " Port "+node.getMyPort()+ " was added by Gossip");
+                System.out.println("Node IP " + node.getMyIP() + " Port " + node.getMyPort() + " was added by Gossip");
             } else {
                 System.out.println(node + " was added to the routing table of " + this);
             }
@@ -483,7 +523,7 @@ public class Node implements Runnable {
         message = MessageUtil.setMessageSend(message);
         try {
             for (Node myNeighbour : myNeighbours) {
-                    ds.send(MessageUtil.createDataPacketFormattedMsg(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
+                ds.send(MessageUtil.createDataPacketFormattedMsg(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
             }
         } catch (IOException e) {
             log.error(e.getMessage());
@@ -492,13 +532,26 @@ public class Node implements Runnable {
     }
 
     public void leave() {
+        try {
+            String request = MessageCodesEnum.LEAVE + " " + myIP + " " + myPort;
+
+            //send neighbours about leave
+            for (Node node : myNeighbours) {
+                ds.send(MessageUtil.createDataPacket(request, node.getMyIP(), node.getMyPort()));
+            }
+            myNeighbours.clear();   //clear my neighbours
+            unregister();           //unregister from server
+            System.exit(1);  //kill current node
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void download(String ip, String port, String fileName) {
-        log.info("Requesting {} file..." , fileName);
+        log.info("Requesting {} file...", fileName);
         try {
             //create request URL to download files
-            URL url = new URL("http://" +ip+":"+port+"/files/download/"+fileName);
+            URL url = new URL("http://" + ip + ":" + port + "/files/download/" + fileName);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
 
@@ -515,7 +568,7 @@ public class Node implements Runnable {
             }
             bufferedReader.close();
 
-            if(content.toString().length() > 0) {
+            if (content.toString().length() > 0) {
                 String workingDirectory = System.getProperty("user.dir");
                 String target = workingDirectory + "\\src\\main\\resources\\static\\downloadedFiles\\" +
                         fileName.replace("%20", " ") + ".txt";
