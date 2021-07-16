@@ -11,8 +11,8 @@ public class HeartBeat extends Thread {
     private static final int STARTING_DELAY = 1000;
     private static final int PERIOD = 1000;
 
-    private Node node;
-    private DatagramSocket ds;
+    private final Node node;
+
 
     public HeartBeat(Node receivedNode) {
         node = receivedNode;
@@ -44,9 +44,9 @@ public class HeartBeat extends Thread {
 
     private void sendHeartBeatMessage(Node receiver) {
         try {
-            node.ds = new DatagramSocket();
+            DatagramSocket ds = new DatagramSocket();
             String message = MessageCodesEnum.ISACTIVE + " " + node.getMyIP() + " " + node.getMyPort();
-            node.ds.send(MessageUtil.createDataPacket(message,receiver.getMyIP(),receiver.getMyPort()));
+            ds.send(MessageUtil.createDataPacket(message,receiver.getMyIP(),receiver.getMyPort()));
 
         } catch (IOException e) {
             e.printStackTrace();

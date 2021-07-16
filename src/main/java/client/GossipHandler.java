@@ -10,7 +10,6 @@ import java.util.TimerTask;
 public class GossipHandler extends Thread {
     private static final int STARTING_DELAY = 1000;
     private static final int PERIOD = 1000;
-
     private static Node node;
 
     public GossipHandler(Node receivedNode) {
@@ -43,10 +42,9 @@ public class GossipHandler extends Thread {
 
     private static void floodGossip (Node receiver) {
         try {
-            node.ds = new DatagramSocket();
+            DatagramSocket ds = new DatagramSocket();
             String message = MessageCodesEnum.GOSSIP + " " + node.getMyIP() + " " + node.getMyPort();
-            node.ds.send(MessageUtil.createDataPacket(message,receiver.getMyIP(),receiver.getMyPort()));
-
+            ds.send(MessageUtil.createDataPacket(message,receiver.getMyIP(),receiver.getMyPort()));
         } catch (IOException e) {
             e.printStackTrace();
         }
