@@ -125,30 +125,44 @@ public class Node implements Runnable {
                 String receivedMessage = new String(receivedData, 0, receivedData.length).trim();
                 StringTokenizer st = new StringTokenizer(receivedMessage, " ");
 
-                Node sender = new Node(receivedMessage.split(" ")[2],
-                        Integer.parseInt(receivedMessage.split(" ")[3]));
-
                 String encodeLength= st.nextToken();
 
-                switch (st.nextToken()) {
-                    case "JOIN":
+                Node sender;
+                MessageCodesEnum messageCode = MessageCodesEnum.valueOf(st.nextToken());
+                if (messageCode == MessageCodesEnum.SEROK) {
+                    sender = new Node(receivedMessage.split(" ")[3],
+                            Integer.parseInt(receivedMessage.split(" ")[4]));
+                } else {
+                    sender = new Node(receivedMessage.split(" ")[2],
+                            Integer.parseInt(receivedMessage.split(" ")[3]));
+                }
+                switch (messageCode) {
+                    case JOIN:
 //                        log.info("[JOIN] request from " + sender);
                         addToMyRoutingTable(sender, false);
                         break;
-                    case "GOSSIP":
+                    case GOSSIP:
                         log.info("[GOSSIP] from " + sender);
                         sendMyNeighbours(sender);
                         break;
-                    case "GOSSIPOK":
+                    case GOSSIPOK:
                         log.info("[GOSSIPOK] from " + sender);
                         handleGossipOK(st);
-                    case "ISACTIVE":
+                    case ISACTIVE:
 //                        log.info("[ISACTIVE] from " + sender);
                         handleHeartBeat(sender);
                         break;
-                    case "ACTIVE":
+                    case ACTIVE:
 //                        log.info("[ACTIVE] from " + sender);
                         addActiveNeighbours(sender);
+                        break;
+                    case SER:
+                        log.info("[SER] from " + sender);
+                        handleSearch(sender, receivedMessage);
+                        break;
+                    case SEROK:
+                        log.info("[SEROK] from " + sender);
+                        handleSearchOk(sender, receivedMessage);
                         break;
                     default:
                         log.warn("Invalid message type");
@@ -158,6 +172,110 @@ public class Node implements Runnable {
         } catch (BindException ex) {
             log.info("Already in use. Please re-register and try again !");
         } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleSearchOk(Node founder, String receivedMessage) {
+        String[] splitReceivedMsg = receivedMessage.split("\"");
+        ArrayList<String> cleanedMessage = removeSpaces(splitReceivedMsg);
+
+        String command = cleanedMessage.get(0);
+        int fileCount = Integer.parseInt(command.split(" ")[2]);
+        String foundHops = command.split(" ")[5];
+
+        System.out.println(fileCount + " results found from " + founder + " in " + foundHops + " hops");
+
+        if (fileCount > 0 && cleanedMessage.size() > 1) {
+            System.out.println("Founded File Names:");
+            for(int i= 1; i < cleanedMessage.size(); i++){
+                System.out.print(cleanedMessage.get(i) + " ");
+            }
+            System.out.println("\n----------------------------------------------------");
+        }
+    }
+
+    private ArrayList<String> removeSpaces(String[] splitReceivedMsg) {
+        ArrayList<String> fileLst = new ArrayList<>();
+        for(String i: splitReceivedMsg){
+            if(!i.trim().equals(""))
+                fileLst.add(i.trim());
+        }
+
+        return fileLst;
+    }
+
+    private void handleSearch(Node searcher, String receivedMessage) {
+        String[] splitReceivedMsg = receivedMessage.split("\"");
+        String fileName = splitReceivedMsg[1].trim();
+        String hops = splitReceivedMsg[2].trim();
+        int newHops = Integer.parseInt(hops) + 1;
+
+        Set<String> myFoundFiles = new HashSet<>();
+
+        //search through all of my resources
+        System.out.println("Searching the file: " +  fileName + " in my resources..");
+        for (String myFileName : myResources){
+            for (String word : fileName.split(" ")) {
+   /*              check for each word of the given file name within my file name
+                If contains, add to the myFoundFiles and jump to searching within the next my file*/
+                if (myFileName.toLowerCase().contains(word.toLowerCase())) {
+                    myFoundFiles.add(myFileName);
+                    break;
+                }
+            }
+        }
+
+//        If no files found
+        if(myFoundFiles.isEmpty()) {
+            //If hop limit of flooding not exceeded, ask neighbours to search
+            if(newHops <= 4) {
+                System.out.println("I do not have the file. Asking neighbours to find the file: " +  fileName);
+                this.askNeighboursToSearch(fileName, searcher, String.valueOf(newHops));
+            } else { // If hop count limit exceeded, send no files found to the searcher
+                System.out.println("I do not have the file: " +  fileName + ". Hop count limit exceeded");
+                sendSearchResultToSearcher(myFoundFiles, searcher, String.valueOf(newHops));
+            }
+        } else { // If files found
+            System.out.println("I have search results matching with requested file: " +  fileName);
+            sendSearchResultToSearcher(myFoundFiles, searcher, String.valueOf(newHops));
+        }
+    }
+
+    private void askNeighboursToSearch(String searchFileName, Node searcher, String hops) {
+        String message = MessageCodesEnum.SER + " " + searcher.getMyIP() + " " + searcher.getMyPort() +" \""+searchFileName+"\" "+hops;
+        message = MessageUtil.setMessageSend(message);
+        try {
+            for (Node myNeighbour : myNeighbours) {
+                if(!myNeighbour.compareMeWithAnotherNode(searcher)) {
+                    System.out.println("[SER] request for file: " + searchFileName + " to " + myNeighbour);
+                    ds.send(MessageUtil.createDataPacketFormattedMsg(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
+                }
+            }
+        } catch (IOException e) {
+            log.error(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+    private void sendSearchResultToSearcher(Set<String> myFoundFiles, Node searcher, String hops) {
+        String allFilesString = "";
+        if (!myFoundFiles.isEmpty()) {
+            StringBuilder files= new StringBuilder();
+            for (String result: myFoundFiles){
+                files.append("\"").append(result).append("\" ");
+            }
+            allFilesString = files.toString();
+        }
+
+        String message = MessageCodesEnum.SEROK + " " + myFoundFiles.size()+ " " + myIP +" "+ myPort + " " + hops +" " +
+                allFilesString;
+        try {
+            System.out.println("[SEROK] to " + searcher + ". " + myFoundFiles.size() + " files found.");
+            ds.send(MessageUtil.createDataPacket(message, searcher.getMyIP(), searcher.getMyPort()));
+        } catch (IOException e) {
+            log.error(e.getMessage());
             e.printStackTrace();
         }
     }
@@ -204,7 +322,7 @@ public class Node implements Runnable {
             String responseMsg = new String(buffer, 0, response.getLength());
             String[] responseMsgArr = responseMsg.split(" ");
 
-            if(responseMsgArr[1].equals(MessageCodesEnum.UNROK)){
+            if(MessageCodesEnum.valueOf(responseMsgArr[1]).equals(MessageCodesEnum.UNROK)){
                 if (responseMsgArr[2].equals("0"))
                     log.info(myIP+":"+myPort+" unregister successfully");
                 else
