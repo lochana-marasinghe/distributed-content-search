@@ -352,7 +352,7 @@ public class Node implements Runnable {
 
         try {
             ds = new DatagramSocket();
-            String message = MessageCodesEnum.UNREG + myIP + " " + myPort + " " + myUsername;
+            String message = MessageCodesEnum.UNREG + " " + myIP + " " + myPort + " " + myUsername;
             ds.send(MessageUtil.createDataPacket(message, BOOTSTRAP_SERVER_IP, BOOTSTRAP_SERVER_PORT));
 
             //handle response by server
