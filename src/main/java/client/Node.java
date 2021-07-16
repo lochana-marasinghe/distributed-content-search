@@ -33,7 +33,7 @@ public class Node implements Runnable {
     private DatagramSocket socket = null;
 
     private static final int BOOTSTRAP_SERVER_PORT = 55555;
-    private static final String BOOTSTRAP_SERVER_IP = "192.168.43.157";
+    private static final String BOOTSTRAP_SERVER_IP = "192.168.1.10";
 
     @Autowired
     ServletContext context;
@@ -106,7 +106,7 @@ public class Node implements Runnable {
 
     @Override
     public void run() {
-        System.out.println(this+ " started to listen to messages");
+        System.out.println(this + " started to listen to messages");
 
         DatagramSocket socket;
         try {
@@ -122,11 +122,13 @@ public class Node implements Runnable {
                 }
 
                 byte[] receivedData = messageRequest.getData();
-                String receivedMessage = new String(receivedData, 0, receivedData.length);
+                String receivedMessage = new String(receivedData, 0, receivedData.length).trim();
                 StringTokenizer st = new StringTokenizer(receivedMessage, " ");
+
                 Node sender = new Node(receivedMessage.split(" ")[2],
                         Integer.parseInt(receivedMessage.split(" ")[3]));
 
+                String encodeLength= st.nextToken();
 
                 switch (st.nextToken()) {
                     case "JOIN":
@@ -161,8 +163,8 @@ public class Node implements Runnable {
     }
 
     public void showMyResourcesList() {
-        System.out.println(" Files List at" + myIP + "/" + myPort);
-        System.out.println("============================");
+        System.out.println("Files List at " + myIP + "/" + myPort);
+        System.out.println("==========================================================");
         for (String name : myResources) {
             System.out.println(name);
         }
@@ -181,8 +183,35 @@ public class Node implements Runnable {
 
             addInitialNeighbours();
             printMyRoutingTable();
+            join();
         } catch (IOException e) {
             log.error(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void unregister() {
+
+        try {
+            ds = new DatagramSocket();
+            String message = MessageCodesEnum.UNREG + myIP + " " + myPort + " " + myUsername;
+            ds.send(MessageUtil.createDataPacket(message, BOOTSTRAP_SERVER_IP, BOOTSTRAP_SERVER_PORT));
+
+            //handle response by server
+            byte[] buffer = new byte[512];
+            DatagramPacket response = new DatagramPacket(buffer, buffer.length);
+            ds.receive(response);      //get the server response
+            String responseMsg = new String(buffer, 0, response.getLength());
+            String[] responseMsgArr = responseMsg.split(" ");
+
+            if(responseMsgArr[1].equals(MessageCodesEnum.UNROK)){
+                if (responseMsgArr[2].equals("0"))
+                    log.info(myIP+":"+myPort+" unregister successfully");
+                else
+                    log.info("Unregistered successfully!");
+            }
+
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -222,20 +251,22 @@ public class Node implements Runnable {
             } else if (responseCode == 9997) {
                 System.out.println(responseCode + " Node Registration Failed. IP and Port is already in use.");
             } else if (responseCode == 9996) {
-                System.out.println(responseCode + " Node Registration Failed. The BootStrap server is filled");
+                System.out.println(responseCode + " Node Registration Failed. The BootStrap server is filled.");
             } else if (responseCode == 0) {
-                System.out.println("Nodes in the network: " + responseCode + "Node registration successful" +
+                System.out.println("Nodes in the network: " + responseCode + " Node registration successful" +
                         ". No other nodes available in the network yet");
             } else {
-                System.out.println("Node in the network: " + responseCode + "Node registration successful.");
+                System.out.println("Node in the network: " + responseCode + " Node registration successful.");
 
                 for (int i = 3; i < splitResponse.length; i += 2) {
                     String neighbourIp = splitResponse[i];
                     int neighbourPort = Integer.parseInt(splitResponse[i + 1]);
 
-                    if (isNeighbour(neighbourIp, neighbourPort)) // Will have to remove this check redundant
+                    if (!isNeighbour(neighbourIp, neighbourPort)) // Will have to remove this check redundant
                         addToMyRoutingTable(new Node(neighbourIp, neighbourPort));
                 }
+                for(Node i:myNeighbours)
+                    System.out.println(myPort+": Neighbours"+i.toString());
             }
         }
     }
@@ -323,8 +354,6 @@ public class Node implements Runnable {
         }
     }
 
-    public void unregister() {
-    }
 
     public void search(String searchFileName) {
         String message = MessageCodesEnum.SER + " " + myIP + " " + myPort + " \"" + searchFileName + "\" 0";
@@ -400,7 +429,6 @@ public class Node implements Runnable {
             log.info(node + " Added to blacklist");
         }
     }
-
 
 
 }

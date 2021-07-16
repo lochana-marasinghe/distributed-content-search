@@ -23,12 +23,12 @@ public class DistributedContentSearchApplication {
         String ip = getMyIp();
 
 		System.out.println("=========== DISTRIBUTED CONTENT SEARCHING APPLICATION=============");
-        System.out.println("\nPlease enter the port Number:");
+        System.out.print("\nPlease enter the port Number:");
 		port = scanner.nextInt();
 
 		scanner.nextLine();
 
-		System.out.println("Please enter the username:");
+		System.out.print("Please enter the username:");
 		String username = scanner.nextLine();
 
 		Node newNode = new Node(ip, port, username);
