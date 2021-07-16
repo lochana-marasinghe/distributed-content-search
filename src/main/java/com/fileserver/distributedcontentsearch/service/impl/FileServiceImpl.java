@@ -1,5 +1,6 @@
 package com.fileserver.distributedcontentsearch.service.impl;
 
+import com.fileserver.distributedcontentsearch.DistributedContentSearchApplication;
 import com.fileserver.distributedcontentsearch.service.FileService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -28,7 +29,7 @@ public class FileServiceImpl implements FileService {
     String[] files = new String[20];
     String[] servingFiles;
 
-    public void init() {
+    public FileServiceImpl() {
         try {
         File file = ResourceUtils.getFile("classpath:static/fileNames.txt");
         BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
@@ -54,6 +55,7 @@ public class FileServiceImpl implements FileService {
             int index = random.nextInt(20);
             servingFiles[i] = files[index];
         }
+        DistributedContentSearchApplication.filesServed = this.servingFiles;
     }
 
     @Override

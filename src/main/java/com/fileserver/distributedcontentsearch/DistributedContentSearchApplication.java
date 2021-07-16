@@ -17,14 +17,18 @@ public class DistributedContentSearchApplication {
     public static String[] filesServed;
 
 	public static void main(String[] args)  {
-		SpringApplication.run(DistributedContentSearchApplication.class, args);
-
 		Scanner scanner = new Scanner(System.in);
-        String ip = getMyIp();
+
+		//		set serving files for the node
+		new FileServiceImpl();
+
+		String ip = getMyIp();
 
 		System.out.println("=========== DISTRIBUTED CONTENT SEARCHING APPLICATION=============");
         System.out.print("\nPlease enter the port Number:");
 		port = scanner.nextInt();
+
+		SpringApplication.run(DistributedContentSearchApplication.class, args);
 
 		scanner.nextLine();
 
@@ -34,11 +38,6 @@ public class DistributedContentSearchApplication {
 		Node newNode = new Node(ip, port, username);
 
 		new Thread(newNode).start();
-
-//		set serving files for the node
-		FileServiceImpl fileService = new FileServiceImpl();
-		fileService.init();
-		filesServed = fileService.getServingFiles();
 
 		for (String s : filesServed) {
 			newNode.addResource(s, "/" + s);
