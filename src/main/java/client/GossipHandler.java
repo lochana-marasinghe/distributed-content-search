@@ -8,8 +8,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class GossipHandler extends Thread {
-    private static final int STARTING_DELAY = 1000;
-    private static final int PERIOD = 1000;
+    private static final int STARTING_DELAY = 10000;
+    private static final int PERIOD = 10000;
     private static Node node;
 
     public GossipHandler(Node receivedNode) {

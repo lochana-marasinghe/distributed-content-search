@@ -132,8 +132,8 @@ public class Node implements Runnable {
 
                 switch (st.nextToken()) {
                     case "JOIN":
-                        log.info("[JOIN] request from " + sender);
-                        addToMyRoutingTable(sender);
+//                        log.info("[JOIN] request from " + sender);
+                        addToMyRoutingTable(sender, false);
                         break;
                     case "GOSSIP":
                         log.info("[GOSSIP] from " + sender);
@@ -143,11 +143,11 @@ public class Node implements Runnable {
                         log.info("[GOSSIPOK] from " + sender);
                         handleGossipOK(st);
                     case "ISACTIVE":
-                        log.info("[ISACTIVE] from " + sender);
+//                        log.info("[ISACTIVE] from " + sender);
                         handleHeartBeat(sender);
                         break;
                     case "ACTIVE":
-                        log.info("[ACTIVE] from " + sender);
+//                        log.info("[ACTIVE] from " + sender);
                         addActiveNeighbours(sender);
                         break;
                     default:
@@ -263,7 +263,7 @@ public class Node implements Runnable {
                     int neighbourPort = Integer.parseInt(splitResponse[i + 1]);
 
                     if (!isNeighbour(neighbourIp, neighbourPort)) // Will have to remove this check redundant
-                        addToMyRoutingTable(new Node(neighbourIp, neighbourPort));
+                        addToMyRoutingTable(new Node(neighbourIp, neighbourPort), false);
                 }
                 for(Node i:myNeighbours)
                     System.out.println(myPort+": Neighbours"+i.toString());
@@ -271,12 +271,17 @@ public class Node implements Runnable {
         }
     }
 
-    public void addToMyRoutingTable(Node node) {
+    public void addToMyRoutingTable(Node node, boolean fromGossip) {
+
         if (isNeighbour(node.getMyIP(), node.getMyPort())) {
-            log.warn(node + " is already a neighbour of " + this);
+//            log.warn(node + " is already a neighbour of " + this);
         } else {
             this.myNeighbours.add(node);
-            log.info(node + " was added to the routing table of " + this);
+            if (fromGossip) {
+                System.out.println("Node IP " + node.getMyIP() + " Port "+node.getMyPort()+ " was added by Gossip");
+            } else {
+                System.out.println(node + " was added to the routing table of " + this);
+            }
         }
     }
 
@@ -288,7 +293,7 @@ public class Node implements Runnable {
     }
 
     public void sendMyNeighbours(Node sender) {
-        addToMyRoutingTable(sender);
+        addToMyRoutingTable(sender, false);
 
         if (this.myNeighbours.size() > 1) {
             StringBuilder nodesToSend = new StringBuilder();
@@ -318,21 +323,21 @@ public class Node implements Runnable {
             Node sender = new Node(st.nextToken(), Integer.parseInt(st.nextToken()));
             int noOfReceivedNodes = Integer.parseInt(st.nextToken());
 
-            log.info("[GOSSIP] Trying to add " + sender);
-            addToMyRoutingTable(sender);
+            log.info("[GOSSIPOK] Trying to add the sender " + sender);
+            addToMyRoutingTable(sender, true);
 
             for (int i = 0; i < noOfReceivedNodes; i++) {
                 Node receivedNode = new Node(st.nextToken(), Integer.parseInt(st.nextToken()));
 
                 if (!isBlacklisted(receivedNode)) {
-                    log.info("[GOSSIP] Trying to add " + receivedNode);
-                    addToMyRoutingTable(receivedNode);
+                    log.info("[GOSSIPOK] Trying to add receiving neighbour " + receivedNode);
+                    addToMyRoutingTable(receivedNode, true);
                 } else {
-                    log.warn(receivedNode + " is blacklisted");
+                    log.warn("Receiving neighbour " + receivedNode + " is blacklisted");
                 }
             }
         } else {
-            log.warn(this + " already has 2 neighbours");
+            log.warn(this + " already has 3 neighbours");
         }
     }
 
@@ -348,9 +353,9 @@ public class Node implements Runnable {
     public void addActiveNeighbours(Node sender) {
         if (!isActiveNeighbour(sender)) {
             this.myActiveNeighbours.add(sender);
-            log.info("Added " + sender + "to Active Neighbour List");
+//            log.info("Added " + sender + "to Active Neighbour List");
         } else {
-            log.warn(sender + " already in Active Neighbour List");
+//            log.warn(sender + " already in Active Neighbour List");
         }
     }
 

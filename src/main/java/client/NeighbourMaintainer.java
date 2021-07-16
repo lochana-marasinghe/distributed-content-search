@@ -44,23 +44,23 @@ public class NeighbourMaintainer extends Thread {
                     .filter(node -> !this.node.getMyActiveNeighbours().contains(node))
                     .collect(Collectors.toCollection(ArrayList::new));
 
-            log.info("Removing inactive neighbours");
+//            log.info("Removing inactive neighbours");
             this.node.setMyNeighbours(updatedNeighbourArrayList);
 
-            log.info("Updating the blacklist");
+//            log.info("Updating the blacklist");
 
             for (Node blacklistedNode : nodesToBlacklisted) {
                 this.node.addBlacklistNode(blacklistedNode);
             }
-            log.info("Clearing the active neighbours list");
+//            log.info("Clearing the active neighbours list");
             this.node.setMyActiveNeighbours(new ArrayList<>());
 
         } else {
-            log.warn("[Active Checker] " + node + " does not have any active nodes");
+//            log.warn("[Active Checker] " + node + " does not have any active nodes");
         }
 
         if (counter == 5 ) {
-            log.info("Resetting blacklist counter");
+//            log.info("Resetting blacklist counter");
             this.node.setMyBlacklist(new ArrayList<>());
         }
     }
