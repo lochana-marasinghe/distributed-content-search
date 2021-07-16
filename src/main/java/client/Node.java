@@ -294,12 +294,12 @@ public class Node implements Runnable {
             StringBuilder nodesToSend = new StringBuilder();
             int noOfNodesToSend = 0;
             for (Node neighbour : this.myNeighbours) {
-                if (neighbour.compareMeWithAnotherNode(sender)) {
+                if (!neighbour.compareMeWithAnotherNode(sender)) {
                     nodesToSend.append(neighbour.getMyIP()).append(" ").append(neighbour.myPort).append(" ");
                     noOfNodesToSend++;
                 }
             }
-            String message = MessageCodesEnum.GOSSIPOK + " " + sender.getMyIP() + " " + sender.getMyPort() + " " + noOfNodesToSend + " "
+            String message = MessageCodesEnum.GOSSIPOK + " " + myIP + " " + myPort + " " + noOfNodesToSend + " "
                     + nodesToSend.delete(nodesToSend.length() - 1, nodesToSend.length());
             log.info("Sending neighbours to " + sender);
             try {
@@ -324,7 +324,7 @@ public class Node implements Runnable {
             for (int i = 0; i < noOfReceivedNodes; i++) {
                 Node receivedNode = new Node(st.nextToken(), Integer.parseInt(st.nextToken()));
 
-                if (isBlacklisted(receivedNode)) {
+                if (!isBlacklisted(receivedNode)) {
                     log.info("[GOSSIP] Trying to add " + receivedNode);
                     addToMyRoutingTable(receivedNode);
                 } else {
@@ -363,6 +363,7 @@ public class Node implements Runnable {
                     ds.send(MessageUtil.createDataPacketFormattedMsg(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
             }
         } catch (IOException e) {
+            log.error(e.getMessage());
             e.printStackTrace();
         }
     }
