@@ -32,7 +32,7 @@ public class DistributedContentSearchApplication {
 
 		scanner.nextLine();
 
-		System.out.print("Please enter the username:");
+		System.out.print("\nPlease enter the username:");
 		String username = scanner.nextLine();
 
 		Node newNode = new Node(ip, port, username);
