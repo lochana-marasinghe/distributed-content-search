@@ -125,12 +125,12 @@ public class Node implements Runnable {
 
                 String encodeLength = st.nextToken();
 
-                Node sender;
+                Node sender = null;
                 MessageCodesEnum messageCode = MessageCodesEnum.valueOf(st.nextToken());
                 if (messageCode == MessageCodesEnum.SEROK) {
                     sender = new Node(receivedMessage.split(" ")[3],
                             Integer.parseInt(receivedMessage.split(" ")[4]));
-                } else {
+                } else if (messageCode != MessageCodesEnum.LEAVEOK){
                     sender = new Node(receivedMessage.split(" ")[2],
                             Integer.parseInt(receivedMessage.split(" ")[3]));
                 }
