@@ -31,7 +31,7 @@ public class Node implements Runnable {
     private DatagramSocket socket = null;
 
     private static final int BOOTSTRAP_SERVER_PORT = 55555;
-    private static final String BOOTSTRAP_SERVER_IP = "192.168.1.10";
+    private static final String BOOTSTRAP_SERVER_IP = "192.168.8.100";
 
     @Autowired
     ServletContext context;
@@ -569,10 +569,12 @@ public class Node implements Runnable {
             bufferedReader.close();
 
             if (content.toString().length() > 0) {
-                String workingDirectory = System.getProperty("user.dir");
-                String target = workingDirectory + "\\src\\main\\resources\\static\\downloadedFiles\\" +
-                        fileName.replace("%20", " ") + ".txt";
+//                String workingDirectory = System.getProperty("user.dir");
+//                String target = workingDirectory + "\\src\\main\\resources\\static\\downloadedFiles\\" +
+//                        fileName.replace("%20", " ") + ".txt";
 
+                String target ="downloadedFiles/" +
+                        fileName.replace("%20", " ") + ".txt";
                 FileOutputStream fileOutputStream = new FileOutputStream(target);
                 fileOutputStream.write(content.toString().getBytes());
 

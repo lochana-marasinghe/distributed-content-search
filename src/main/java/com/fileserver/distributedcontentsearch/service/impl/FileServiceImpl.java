@@ -31,7 +31,7 @@ public class FileServiceImpl implements FileService {
 
     public FileServiceImpl() {
         try {
-        File file = ResourceUtils.getFile("classpath:static/fileNames.txt");
+        File file = ResourceUtils.getFile("fileNames.txt");
         BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
 
         String line;
@@ -94,8 +94,8 @@ public class FileServiceImpl implements FileService {
                 log.info("File: {} \nFile Size: {}MB\nHash: {}", fileName, fileSize / (1024 * 1024), encodeToString );
 
                 //create file
-                String workingDirectory = System.getProperty("user.dir");
-                String target = workingDirectory + "\\src\\main\\resources\\static\\createdFiles\\" + fileName + ".txt";
+//                String workingDirectory = System.getProperty("user.dir");
+                String target = "createdFiles/" + fileName + ".txt";
 
                 BufferedWriter writer = new BufferedWriter(new FileWriter(target));
                 writer.write(writeString);
