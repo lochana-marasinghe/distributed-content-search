@@ -203,18 +203,9 @@ public class Node implements Runnable {
         if (removingIndex >= 0) {
             myNeighbours.remove(removingIndex);
             System.out.println("Removed node " + ip + ":" + port);
-            String request = "LEAVEOK 0";
-            String length = String.valueOf(request.length() + 5);
-            length = String.format("%4s", length).replace(' ', '0');
-            request = length + " " + request;
-            byte[] msg = request.getBytes();
-
-            InetAddress receiverIP = null;
+            String request = MessageCodesEnum.LEAVEOK + " 0";
             try {
-                receiverIP = InetAddress.getByName(ip);
-
-                DatagramPacket packet = new DatagramPacket(msg, msg.length, receiverIP, port);
-                ds.send(packet);        //send response
+                ds.send(MessageUtil.createDataPacket(request,ip, port ));        //send response
             } catch (IOException e) {
                 e.printStackTrace();
             }
