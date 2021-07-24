@@ -51,6 +51,10 @@ public class CommandHandler {
                     node.download(reqIp, reqPort, fileName.toString());
                 }
                 break;
+            case "test": {
+                node.runTestQueries();
+            }
+            break;
             default:
                 System.out.println("Invalid Command");
         }

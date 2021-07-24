@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.ResourceUtils;
 
 import javax.servlet.ServletContext;
 import java.io.*;
@@ -12,7 +13,11 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Data
 @NoArgsConstructor
@@ -31,15 +36,17 @@ public class Node implements Runnable {
     private DatagramSocket socket = null;
 
     private static final int BOOTSTRAP_SERVER_PORT = 55555;
-    private static final String BOOTSTRAP_SERVER_IP = "192.168.8.100";
+    private static String BOOTSTRAP_SERVER_IP = "192.168.8.100";
+    public static long searchSentTime = 0;
 
     @Autowired
     ServletContext context;
 
-    public Node(String myIP, int myPort, String myUsername) {
+    public Node(String myIP, int myPort, String myUsername, String bootstrapIp) {
         this.myIP = myIP;
         this.myPort = myPort;
         this.myUsername = myUsername;
+        BOOTSTRAP_SERVER_IP = bootstrapIp;
     }
 
     public Node(String myIP, int myPort) {
@@ -224,6 +231,35 @@ public class Node implements Runnable {
         int fileCount = Integer.parseInt(command.split(" ")[2]);
         String foundHops = command.split(" ")[5];
 
+        if (fileCount > 0) {
+            String hopCountFileName = "hops_" + myIP + "_" + myPort;
+            String hopCountTarget =  hopCountFileName + ".csv";
+            String latencyFileName = "latency_" + myIP + "_" + myPort;
+            String latencyTarget =  latencyFileName + ".csv";
+            try {
+                LocalDateTime ldt = LocalDateTime.now();
+                ZoneId colomboZoneId = ZoneId.of("Asia/Colombo");
+                ZonedDateTime colomboZonedDateTime = ldt.atZone(colomboZoneId);
+                String now = colomboZonedDateTime.toString();
+
+                FileWriter fwHops = new FileWriter(hopCountTarget, true);
+                BufferedWriter bwHops = new BufferedWriter(fwHops);
+                bwHops.write(now + ","  + foundHops);
+                bwHops.newLine();
+                bwHops.close();
+
+                long latency  = System.currentTimeMillis() - searchSentTime;
+                FileWriter fwLatency = new FileWriter(latencyTarget, true);
+                BufferedWriter bwLatency = new BufferedWriter(fwLatency);
+                bwLatency.write(now + ","  + latency);
+                bwLatency.newLine();
+                bwLatency.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         System.out.println(fileCount + " results found from " + founder + " in " + foundHops + " hops");
 
         if (fileCount > 0 && cleanedMessage.size() > 1) {
@@ -250,6 +286,24 @@ public class Node implements Runnable {
         String fileName = splitReceivedMsg[1].trim();
         String hops = splitReceivedMsg[2].trim();
         int newHops = Integer.parseInt(hops) + 1;
+
+        try {
+            String msgCountFileName = "msgCount_" + myIP + "_" + myPort;
+            String msgTarget =  msgCountFileName + ".csv";
+
+            LocalDateTime ldt = LocalDateTime.now();
+            ZoneId colomboZoneId = ZoneId.of("Asia/Colombo");
+            ZonedDateTime colomboZonedDateTime = ldt.atZone(colomboZoneId);
+            String now = colomboZonedDateTime.toString();
+
+            FileWriter fwLatency = new FileWriter(msgTarget, true);
+            BufferedWriter bwLatency = new BufferedWriter(fwLatency);
+            bwLatency.write(now + ",1" );
+            bwLatency.newLine();
+            bwLatency.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         Set<String> myFoundFiles = new HashSet<>();
 
@@ -522,6 +576,7 @@ public class Node implements Runnable {
         String message = MessageCodesEnum.SER + " " + myIP + " " + myPort + " \"" + searchFileName + "\" 0";
         message = MessageUtil.setMessageSend(message);
         try {
+            searchSentTime = System.currentTimeMillis();
             for (Node myNeighbour : myNeighbours) {
                 ds.send(MessageUtil.createDataPacketFormattedMsg(message, myNeighbour.getMyIP(), myNeighbour.getMyPort()));
             }
@@ -610,6 +665,22 @@ public class Node implements Runnable {
     }
 
 
+    public void runTestQueries() {
+        try {
+        File file = ResourceUtils.getFile("Queries.txt");
+        BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
+
+        String line;
+        while ((line = bufferedReader.readLine()) != null){
+            search(line);
+            TimeUnit.SECONDS.sleep(5);
+        }
+            bufferedReader.close();
+        } catch (IOException | InterruptedException e) {
+            log.error(e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }
 
 

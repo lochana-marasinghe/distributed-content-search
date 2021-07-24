@@ -35,7 +35,10 @@ public class DistributedContentSearchApplication {
 		System.out.print("\nPlease enter the username:");
 		String username = scanner.nextLine();
 
-		Node newNode = new Node(ip, port, username);
+		System.out.print("\nPlease enter the bootstrap server ip:");
+		String bootstrapIp = scanner.nextLine();
+
+		Node newNode = new Node(ip, port, username, bootstrapIp);
 
 		new Thread(newNode).start();
 
