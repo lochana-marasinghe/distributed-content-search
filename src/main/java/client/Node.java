@@ -171,6 +171,7 @@ public class Node implements Runnable {
                         break;
                     case LEAVE:
                         handleLeave(receivedMessage);
+                        break;
                     case LEAVEOK:
                         if (receivedMessage.split(" ")[2].equals("0"))
                             System.out.println(myIP + ":" + myPort + " Leave successfully");
